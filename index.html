@@ -1,0 +1,662 @@
+<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Color Gradient</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: Arial, sans-serif;
+        }
+
+        #canvas-container {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: center;
+            position: relative;
+        }
+
+        canvas {
+            display: block;
+            max-width: 100%;
+            height: auto;
+        }
+
+        #ui {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 8px;
+            color: white;
+            width: 250px;
+            z-index: 100;
+            backdrop-filter: blur(5px);
+        }
+
+        #ui h2 {
+            margin-top: 0;
+            font-size: 18px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            padding-bottom: 8px;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        input[type="range"] {
+            width: 100%;
+        }
+
+        .value-display {
+            font-size: 12px;
+            color: #aaa;
+            text-align: right;
+        }
+
+        button {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 5px;
+            margin-bottom: 5px;
+            font-size: 12px;
+        }
+
+        button:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        button.active {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        #toggle-ui {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            border: none;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            z-index: 101;
+        }
+
+        .color-preview {
+            display: inline-block;
+            width: 15px;
+            height: 15px;
+            margin-right: 5px;
+            vertical-align: middle;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        #error-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            max-width: 80%;
+            display: none;
+        }
+    </style>
+
+<base target="_self">
+
+
+    </head><body><div id="canvas-container"></div>
+    <button id="toggle-ui">☰ Toggle UI</button>
+    <div id="ui">
+        <h2>Gradient Controls</h2>
+        
+        <div class="control-group">
+            <label>Color Palette</label>
+            <div>
+                <button id="palette-vibrant" class="active">Vibrant</button>
+                <button id="palette-muted">Muted</button>
+                <button id="palette-custom">Custom</button>
+            </div>
+        </div>
+
+        <div class="control-group" id="custom-colors-group" style="display: none;">
+            <label>Custom Colors</label>
+            <div>
+                <button id="color1-btn"><span class="color-preview" style="background: #ff3366;"></span>Color 1</button>
+                <button id="color2-btn"><span class="color-preview" style="background: #6633ff;"></span>Color 2</button>
+                <button id="color3-btn"><span class="color-preview" style="background: #33ff66;"></span>Color 3</button>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label for="speed">Animation Speed <span class="value-display" id="speed-value">0.5</span></label>
+            <input type="range" id="speed" min="0" max="1" step="0.01" value="0.5">
+        </div>
+
+        <div class="control-group">
+            <label for="contrast">Contrast <span class="value-display" id="contrast-value">0.5</span></label>
+            <input type="range" id="contrast" min="0" max="1" step="0.01" value="0.5">
+        </div>
+
+        <div class="control-group">
+            <label for="ripple-intensity">Ripple Intensity <span class="value-display" id="ripple-value">0.3</span></label>
+            <input type="range" id="ripple-intensity" min="0" max="1" step="0.01" value="0.3">
+        </div>
+
+        <div class="control-group">
+            <label for="blend-mode">Blend Mode</label>
+            <div>
+                <button id="blend-linear" class="active">Linear</button>
+                <button id="blend-radial">Radial</button>
+                <button id="blend-noise">Noisy</button>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <label>Effects</label>
+            <div>
+                <button id="effect-ripples">Ripples</button>
+                <button id="effect-pulse">Pulse</button>
+                <button id="effect-twist">Twist</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="error-message">
+        Your browser does not support WebGL. Please try with a modern browser.
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Check for WebGL support
+        if (!WebGLRenderingContext) {
+            document.getElementById('error-message').style.display = 'block';
+            throw new Error('WebGL not supported');
+        }
+
+        // Main variables
+        let scene, camera, renderer, material, mesh;
+        let mouseX = 0, mouseY = 0;
+        let targetMouseX = 0, targetMouseY = 0;
+        let rippleTime = 0;
+        let ripplePositions = [];
+        let rippleTimes = [];
+        let isMouseDown = false;
+        let lastClickTime = 0;
+
+        // UI state
+        const state = {
+            palette: 'vibrant',
+            color1: new THREE.Vector3(1.0, 0.2, 0.4),  // RGB
+            color2: new THREE.Vector3(0.4, 0.2, 1.0),
+            color3: new THREE.Vector3(0.2, 1.0, 0.4),
+            speed: 0.5,
+            contrast: 0.5,
+            rippleIntensity: 0.3,
+            blendMode: 0,
+            effectRipples: true,
+            effectPulse: false,
+            effectTwist: false
+        };
+
+        // Initialize Three.js
+        function init() {
+            // Create scene
+            scene = new THREE.Scene();
+
+            // Create camera
+            camera = new THREE.OrthographicCamera(-1, 1, 1, -1, -1, 1);
+
+            // Create renderer
+            const container = document.getElementById('canvas-container');
+            const width = Math.min(window.innerWidth, 1200);
+            const height = width / (16/9);
+            
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(width, height);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
+            container.appendChild(renderer.domElement);
+
+            // Create full-screen quad
+            const geometry = new THREE.PlaneGeometry(2, 2);
+
+            // Shader material
+            material = new THREE.ShaderMaterial({
+                uniforms: {
+                    time: { value: 0 },
+                    resolution: { value: new THREE.Vector2(width, height) },
+                    mouse: { value: new THREE.Vector2(0, 0) },
+                    color1: { value: state.color1 },
+                    color2: { value: state.color2 },
+                    color3: { value: state.color3 },
+                    speed: { value: state.speed },
+                    contrast: { value: state.contrast },
+                    rippleIntensity: { value: state.rippleIntensity },
+                    blendMode: { value: state.blendMode },
+                    effectRipples: { value: state.effectRipples ? 1.0 : 0.0 },
+                    effectPulse: { value: state.effectPulse ? 1.0 : 0.0 },
+                    effectTwist: { value: state.effectTwist ? 1.0 : 0.0 },
+                    ripplePositions: { value: [] },
+                    rippleTimes: { value: [] },
+                    rippleCount: { value: 0 }
+                },
+                vertexShader: `
+                    varying vec2 vUv;
+
+                    void main() {
+                        vUv = uv;
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                    }
+                `,
+                fragmentShader: `
+                    precision highp float;
+                    uniform float time;
+                    uniform vec2 resolution;
+                    uniform vec2 mouse;
+                    uniform vec3 color1;
+                    uniform vec3 color2;
+                    uniform vec3 color3;
+                    uniform float speed;
+                    uniform float contrast;
+                    uniform float rippleIntensity;
+                    uniform int blendMode;
+                    uniform float effectRipples;
+                    uniform float effectPulse;
+                    uniform float effectTwist;
+                    uniform vec2 ripplePositions[10];
+                    uniform float rippleTimes[10];
+                    uniform int rippleCount;
+
+                    varying vec2 vUv;
+
+                    // Smooth interpolation between colors
+                    vec3 palette(float t) {
+                        if (t < 0.5) {
+                            return mix(color1, color2, t * 2.0);
+                        } else {
+                            return mix(color2, color3, (t - 0.5) * 2.0);
+                        }
+                    }
+
+                    // Noise function for organic variation
+                    float noise(vec2 p) {
+                        return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
+                    }
+
+                    // Smooth noise
+                    float smoothNoise(vec2 p) {
+                        vec2 i = floor(p);
+                        vec2 f = fract(p);
+                        
+                        float a = noise(i);
+                        float b = noise(i + vec2(1.0, 0.0));
+                        float c = noise(i + vec2(0.0, 1.0));
+                        float d = noise(i + vec2(1.0, 1.0));
+                        
+                        vec2 u = f * f * (3.0 - 2.0 * f);
+                        return mix(a, b, u.x) + (c - a) * u.y * (1.0 - u.x) + (d - b) * u.x * u.y;
+                    }
+
+                    // Ripple effect
+                    float ripple(vec2 uv, vec2 center, float time) {
+                        float dist = distance(uv, center);
+                        return sin(dist * 20.0 - time * 5.0) * exp(-dist * 5.0 - time * 2.0);
+                    }
+
+                    void main() {
+                        // Normalized pixel coordinates
+                        vec2 uv = vUv;
+                        
+                        // Adjust for aspect ratio
+                        vec2 aspect = vec2(resolution.x / resolution.y, 1.0);
+                        vec2 st = uv * aspect;
+                        vec2 mouseSt = mouse * aspect;
+                        
+                        // Base gradient based on mouse position
+                        float gradient;
+                        
+                        if (blendMode == 0) {
+                            // Linear blend
+                            gradient = mix(mix(uv.x, uv.y, 0.5), mix(st.x, st.y, 0.5), mouse.x + mouse.y);
+                        } else if (blendMode == 1) {
+                            // Radial blend
+                            gradient = distance(st, mouseSt) * 0.7;
+                        } else {
+                            // Noisy blend
+                            gradient = smoothNoise(st * 5.0 + time * 0.1);
+                        }
+                        
+                        // Apply mouse influence
+                        gradient = mix(gradient, mouse.x + mouse.y * 0.5, 0.3);
+                        
+                        // Add time-based animation
+                        gradient += sin(time * 0.3 * speed) * 0.05;
+                        
+                        // Apply contrast
+                        gradient = mix(0.5, gradient, contrast * 1.5 + 0.5);
+                        
+                        // Add ripple effects
+                        if (effectRipples > 0.5) {
+                            for (int i = 0; i < 10; i++) {
+                                if (i >= rippleCount) break;
+                                gradient += ripple(st, ripplePositions[i] * aspect, rippleTimes[i]) * rippleIntensity;
+                            }
+                        }
+                        
+                        // Add pulse effect
+                        if (effectPulse > 0.5) {
+                            float pulse = sin(time * 2.0 * speed) * 0.1 + 0.9;
+                            gradient *= pulse;
+                        }
+                        
+                        // Add twist effect
+                        if (effectTwist > 0.5) {
+                            vec2 twisted = st - mouseSt;
+                            float angle = atan(twisted.y, twisted.x) + time * 0.5 * speed;
+                            float dist = length(twisted);
+                            st = mouseSt + vec2(cos(angle), sin(angle)) * dist;
+                            gradient = mix(gradient, smoothNoise(st * 10.0), 0.3);
+                        }
+                        
+                        // Get color from palette
+                        vec3 color = palette(fract(gradient + time * 0.05 * speed));
+                        
+                        // Final color with subtle vignette
+                        float vignette = 1.0 - distance(uv, vec2(0.5)) * 0.5;
+                        color *= vignette;
+                        
+                        gl_FragColor = vec4(color, 1.0);
+                    }
+                `
+            });
+
+            mesh = new THREE.Mesh(geometry, material);
+            scene.add(mesh);
+
+            // Event listeners
+            window.addEventListener('resize', onWindowResize);
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('touchmove', onTouchMove, { passive: false });
+            document.addEventListener('mousedown', onMouseDown);
+            document.addEventListener('mouseup', onMouseUp);
+            document.addEventListener('touchstart', onTouchStart, { passive: false });
+            document.addEventListener('touchend', onTouchEnd, { passive: false });
+            document.addEventListener('click', onClick);
+
+            // UI event listeners
+            setupUI();
+
+            // Start animation loop
+            animate();
+        }
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Update time
+            material.uniforms.time.value += 0.016; // Approximate 60fps delta
+
+            // Smooth mouse movement
+            mouseX += (targetMouseX - mouseX) * 0.1;
+            mouseY += (targetMouseY - mouseY) * 0.1;
+            material.uniforms.mouse.value.set(mouseX, mouseY);
+
+            // Update ripple times
+            for (let i = 0; i < rippleTimes.length; i++) {
+                rippleTimes[i] += 0.016;
+            }
+
+            // Remove old ripples
+            while (rippleTimes.length > 0 && rippleTimes[0] > 3.0) {
+                rippleTimes.shift();
+                ripplePositions.shift();
+            }
+
+            // Update shader with current ripple data
+            material.uniforms.rippleCount.value = ripplePositions.length;
+            for (let i = 0; i < Math.min(ripplePositions.length, 10); i++) {
+                material.uniforms.ripplePositions.value[i] = ripplePositions[i];
+                material.uniforms.rippleTimes.value[i] = rippleTimes[i];
+            }
+
+            // Render
+            renderer.render(scene, camera);
+        }
+
+        // Window resize handler
+        function onWindowResize() {
+            const container = document.getElementById('canvas-container');
+            const width = Math.min(window.innerWidth, 1200);
+            const height = width / (16/9);
+            
+            renderer.setSize(width, height);
+            material.uniforms.resolution.value.set(width, height);
+        }
+
+        // Mouse movement handler
+        function onMouseMove(event) {
+            const rect = renderer.domElement.getBoundingClientRect();
+            targetMouseX = (event.clientX - rect.left) / rect.width;
+            targetMouseY = (event.clientY - rect.top) / rect.height;
+        }
+
+        // Touch movement handler
+        function onTouchMove(event) {
+            event.preventDefault();
+            if (event.touches.length > 0) {
+                const rect = renderer.domElement.getBoundingClientRect();
+                targetMouseX = (event.touches[0].clientX - rect.left) / rect.width;
+                targetMouseY = (event.touches[0].clientY - rect.top) / rect.height;
+            }
+        }
+
+        // Mouse down handler
+        function onMouseDown() {
+            isMouseDown = true;
+        }
+
+        // Mouse up handler
+        function onMouseUp() {
+            isMouseDown = false;
+        }
+
+        // Touch start handler
+        function onTouchStart() {
+            isMouseDown = true;
+        }
+
+        // Touch end handler
+        function onTouchEnd() {
+            isMouseDown = false;
+        }
+
+        // Click handler for ripples
+        function onClick(event) {
+            const now = Date.now();
+            if (now - lastClickTime < 200) return; // Debounce
+            
+            lastClickTime = now;
+            
+            const rect = renderer.domElement.getBoundingClientRect();
+            const x = (event.clientX - rect.left) / rect.width;
+            const y = (event.clientY - rect.top) / rect.height;
+            
+            ripplePositions.push(new THREE.Vector2(x, y));
+            rippleTimes.push(0.0);
+        }
+
+        // Set up UI controls
+        function setupUI() {
+            // Toggle UI visibility
+            document.getElementById('toggle-ui').addEventListener('click', function() {
+                const ui = document.getElementById('ui');
+                ui.style.display = ui.style.display === 'none' ? 'block' : 'none';
+            });
+
+            // Palette buttons
+            document.getElementById('palette-vibrant').addEventListener('click', function() {
+                state.palette = 'vibrant';
+                state.color1.set(1.0, 0.2, 0.4);
+                state.color2.set(0.4, 0.2, 1.0);
+                state.color3.set(0.2, 1.0, 0.4);
+                updatePalette();
+                updateActiveButtons();
+                document.getElementById('custom-colors-group').style.display = 'none';
+            });
+
+            document.getElementById('palette-muted').addEventListener('click', function() {
+                state.palette = 'muted';
+                state.color1.set(0.8, 0.5, 0.6);
+                state.color2.set(0.5, 0.6, 0.8);
+                state.color3.set(0.6, 0.8, 0.5);
+                updatePalette();
+                updateActiveButtons();
+                document.getElementById('custom-colors-group').style.display = 'none';
+            });
+
+            document.getElementById('palette-custom').addEventListener('click', function() {
+                state.palette = 'custom';
+                updateActiveButtons();
+                document.getElementById('custom-colors-group').style.display = 'block';
+            });
+
+            // Custom color buttons (simplified - in a real app you'd use a color picker)
+            document.getElementById('color1-btn').addEventListener('click', function() {
+                state.color1.set(Math.random(), Math.random(), Math.random());
+                updatePalette();
+                document.querySelector('#color1-btn .color-preview').style.backgroundColor = 
+                    `rgb(${Math.floor(state.color1.x * 255)}, ${Math.floor(state.color1.y * 255)}, ${Math.floor(state.color1.z * 255)})`;
+            });
+
+            document.getElementById('color2-btn').addEventListener('click', function() {
+                state.color2.set(Math.random(), Math.random(), Math.random());
+                updatePalette();
+                document.querySelector('#color2-btn .color-preview').style.backgroundColor = 
+                    `rgb(${Math.floor(state.color2.x * 255)}, ${Math.floor(state.color2.y * 255)}, ${Math.floor(state.color2.z * 255)})`;
+            });
+
+            document.getElementById('color3-btn').addEventListener('click', function() {
+                state.color3.set(Math.random(), Math.random(), Math.random());
+                updatePalette();
+                document.querySelector('#color3-btn .color-preview').style.backgroundColor = 
+                    `rgb(${Math.floor(state.color3.x * 255)}, ${Math.floor(state.color3.y * 255)}, ${Math.floor(state.color3.z * 255)})`;
+            });
+
+            // Sliders
+            document.getElementById('speed').addEventListener('input', function() {
+                state.speed = parseFloat(this.value);
+                material.uniforms.speed.value = state.speed;
+                document.getElementById('speed-value').textContent = state.speed.toFixed(2);
+            });
+
+            document.getElementById('contrast').addEventListener('input', function() {
+                state.contrast = parseFloat(this.value);
+                material.uniforms.contrast.value = state.contrast;
+                document.getElementById('contrast-value').textContent = state.contrast.toFixed(2);
+            });
+
+            document.getElementById('ripple-intensity').addEventListener('input', function() {
+                state.rippleIntensity = parseFloat(this.value);
+                material.uniforms.rippleIntensity.value = state.rippleIntensity;
+                document.getElementById('ripple-value').textContent = state.rippleIntensity.toFixed(2);
+            });
+
+            // Blend mode buttons
+            document.getElementById('blend-linear').addEventListener('click', function() {
+                state.blendMode = 0;
+                material.uniforms.blendMode.value = state.blendMode;
+                updateActiveButtons();
+            });
+
+            document.getElementById('blend-radial').addEventListener('click', function() {
+                state.blendMode = 1;
+                material.uniforms.blendMode.value = state.blendMode;
+                updateActiveButtons();
+            });
+
+            document.getElementById('blend-noise').addEventListener('click', function() {
+                state.blendMode = 2;
+                material.uniforms.blendMode.value = state.blendMode;
+                updateActiveButtons();
+            });
+
+            // Effect buttons
+            document.getElementById('effect-ripples').addEventListener('click', function() {
+                state.effectRipples = !state.effectRipples;
+                material.uniforms.effectRipples.value = state.effectRipples ? 1.0 : 0.0;
+                updateActiveButtons();
+            });
+
+            document.getElementById('effect-pulse').addEventListener('click', function() {
+                state.effectPulse = !state.effectPulse;
+                material.uniforms.effectPulse.value = state.effectPulse ? 1.0 : 0.0;
+                updateActiveButtons();
+            });
+
+            document.getElementById('effect-twist').addEventListener('click', function() {
+                state.effectTwist = !state.effectTwist;
+                material.uniforms.effectTwist.value = state.effectTwist ? 1.0 : 0.0;
+                updateActiveButtons();
+            });
+        }
+
+        // Update palette in shader
+        function updatePalette() {
+            material.uniforms.color1.value.copy(state.color1);
+            material.uniforms.color2.value.copy(state.color2);
+            material.uniforms.color3.value.copy(state.color3);
+        }
+
+        // Update active button states
+        function updateActiveButtons() {
+            // Palette buttons
+            document.getElementById('palette-vibrant').classList.toggle('active', state.palette === 'vibrant');
+            document.getElementById('palette-muted').classList.toggle('active', state.palette === 'muted');
+            document.getElementById('palette-custom').classList.toggle('active', state.palette === 'custom');
+
+            // Blend mode buttons
+            document.getElementById('blend-linear').classList.toggle('active', state.blendMode === 0);
+            document.getElementById('blend-radial').classList.toggle('active', state.blendMode === 1);
+            document.getElementById('blend-noise').classList.toggle('active', state.blendMode === 2);
+
+            // Effect buttons
+            document.getElementById('effect-ripples').classList.toggle('active', state.effectRipples);
+            document.getElementById('effect-pulse').classList.toggle('active', state.effectPulse);
+            document.getElementById('effect-twist').classList.toggle('active', state.effectTwist);
+        }
+
+        // Start the application
+        init();
+    </script>
+
+              
+          
+                
+          
+              
+</body></html>
